@@ -16,7 +16,9 @@ import math
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
+import pandas as pd
 
 # Setting random seeds to keep everything deterministic.
 random.seed(1618)
@@ -93,7 +95,7 @@ class NeuralNetwork_2Layer():
                 for batch, batch2 in (self.__doubleBatchGenerator(xVals, mbs, yVals)):
                     #model_output = self.predict(batch)
                     layer1, layer2 = self.__forward(batch)
-                    loss = self.mse_loss(layer2, batch2)
+                    #loss = self.mse_loss(layer2, batch2)
 
                     #The partial derivative of the error with respect to each of the weights leading into the output layer
                     #includes the partial derivative of the loss function wrt to each of the output neurons, multiplied by the
@@ -265,6 +267,7 @@ def trainModel(data):
         print("Building and training Custom_NN.")
         print("Not yet implemented.")                   #TODO: Write code to build and train your custon neural net.
         network = NeuralNetwork_2Layer(784, 10, 512, 0.01)
+        #network = NeuralNetwork_2Layer(3, 3, 512, 0.01)
         network.train(xTrain,  yTrain)
         return network
     elif ALGORITHM == "tf_net":
@@ -296,7 +299,7 @@ def runModel(data, model):
 
 
 
-def evalResults(data, preds):   #TODO: Add F1 score confusion matrix here.
+def evalResults(data, preds, confusion_matrix_size):   #TODO: Add F1 score confusion matrix here.
     xTest, yTest = data
     acc = 0
     for i in range(preds.shape[0]):
@@ -304,7 +307,7 @@ def evalResults(data, preds):   #TODO: Add F1 score confusion matrix here.
     accuracy = acc / preds.shape[0]
     print("Classifier algorithm: %s" % ALGORITHM)
     print("Classifier accuracy: %f%%" % (accuracy * 100))
-    print_confusion_matrix(preds, yTest)
+    print_confusion_matrix(preds, yTest, confusion_matrix_size)
     print()
 
 
@@ -320,8 +323,15 @@ def one_hot_encode(preds):
 
     return preds_res
 
+def convert_to_tensor(preds, length):
+    result = np.zeros((len(preds), length))
+    for i, num in enumerate(preds):
+        result[i][num] = 1.0
 
-def print_confusion_matrix(preds, actual):
+    return result
+
+
+def print_confusion_matrix(preds, actual, last):
     result = confusion_matrix(actual.argmax(axis=1), preds.argmax(axis=1))
     for i, row in enumerate(result):
         false_pos = 0
@@ -329,7 +339,7 @@ def print_confusion_matrix(preds, actual):
         
         true_pos = result[i][i]
 
-        for j in range(0, 10):
+        for j in range(0, last):
             if i == j:
                 continue
             false_neg = false_neg + result[i][j]
@@ -356,6 +366,24 @@ def print_confusion_matrix(preds, actual):
     plt.show()
     """
 
+def get_iris_dataset():
+    iris = pd.read_csv("https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv")
+    print(iris.head())
+    print(iris.dtypes)
+    X_train, X_test, y_train, y_test = train_test_split(iris.iloc[:, 1:4], iris["virginica"], test_size=0.2)
+    return (X_train, convert_to_tensor(y_train, 3)), (X_test, convert_to_tensor(y_test, 3))
+    #iris["Species"] = iris["Species"].map({"Iris-setosa":0,"Iris-virginica":1,"Iris-versicolor":2})
+    #X_train, X_test, y_train, y_test = train_test_split(iris.iloc[:,1:5], iris["Species"], test_size=0.2)
+
+
+#Extra credit for testing neural net on Iris Dataset
+def train_and_test_on_iris():
+    data = get_iris_dataset()
+    #model = trainModel(data[0])
+    network = NeuralNetwork_2Layer(3, 3, 512, 0.01)
+    network.train(data[0][0], data[0][1], minibatches=False)
+    preds = network.predict(data[1][0])
+    evalResults(data[1], preds, 3)
 #=========================<Main>================================================
 
 def main():
@@ -363,7 +391,7 @@ def main():
     data = preprocessData(raw)
     model = trainModel(data[0])
     preds = runModel(data[1][0], model)
-    evalResults(data[1], preds)
+    evalResults(data[1], preds, 10)
 
 
 
