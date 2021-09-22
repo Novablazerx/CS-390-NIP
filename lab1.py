@@ -372,14 +372,11 @@ def get_iris_dataset():
     print(iris.dtypes)
     X_train, X_test, y_train, y_test = train_test_split(iris.iloc[:, 1:4], iris["virginica"], test_size=0.2)
     return (X_train, convert_to_tensor(y_train, 3)), (X_test, convert_to_tensor(y_test, 3))
-    #iris["Species"] = iris["Species"].map({"Iris-setosa":0,"Iris-virginica":1,"Iris-versicolor":2})
-    #X_train, X_test, y_train, y_test = train_test_split(iris.iloc[:,1:5], iris["Species"], test_size=0.2)
 
 
 #Extra credit for testing neural net on Iris Dataset
 def train_and_test_on_iris():
     data = get_iris_dataset()
-    #model = trainModel(data[0])
     network = NeuralNetwork_2Layer(3, 3, 512, 0.01)
     network.train(data[0][0], data[0][1], minibatches=False)
     preds = network.predict(data[1][0])
