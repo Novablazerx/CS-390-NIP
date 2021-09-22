@@ -13,6 +13,9 @@ from tensorflow import keras
 from tensorflow.keras.utils import to_categorical
 import random
 import math
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 # Setting random seeds to keep everything deterministic.
@@ -50,21 +53,18 @@ class NeuralNetwork_2Layer():
     # Activation function.
     def __sigmoid(self, x):
         #TODO: implement
-        #print("sigmoid")
         denom = np.add(1, np.exp(-x))
         result = np.divide(1, denom)
-        #print("end sigmoid")
         return result
 
     # Activation prime function.
     def __sigmoidDerivative(self, x):
         #TODO: implement
-        #return self.sigmoid(x) * (1 - self.sigmoid(x))
+    
         x1 = self.__sigmoid(x)
         x2 = np.subtract(1, self.__sigmoid(x))
         result = x1 * x2 
         return result
-        #return np.dot(self.__sigmoid(x), np.subtract(1, self.__sigmoid(x)))
 
     # Batch generator for mini-batches. Not randomized.
     def __batchGenerator(self, l, n):
@@ -77,7 +77,7 @@ class NeuralNetwork_2Layer():
             yield l[i : i + n], o[i : i + n]
 
     # Training with backpropagation.
-    def train(self, xVals, yVals, epochs = 5, minibatches = True, mbs = 100):
+    def train(self, xVals, yVals, epochs = 30, minibatches = False, mbs = 100):
         #TODO: Implement backprop. allow minibatches. mbs should specify the size of each minibatch.
 
         for epoch in range(epochs):
@@ -87,54 +87,61 @@ class NeuralNetwork_2Layer():
         
             
             if minibatches:
-                """
-                while start < len(xVals) - mbs:
-                    end = start + mbs
-                    count = start
-                    
-                    while count < end:
-                        model_output = self.predict(xVals[])
-                    start = end
-                """
+            
                 w2_new = self.W2[:]
                 w1_new = self.W1[:]
                 for batch, batch2 in (self.__doubleBatchGenerator(xVals, mbs, yVals)):
                     model_output = self.predict(batch)
                     layer1, layer2 = self.__forward(batch)
                     loss = self.mse_loss(model_output, batch2)
-                    derivative = self.loss_derivative(model_output, batch2) * self.__sigmoidDerivative(model_output)
+                    derivative = self.loss_derivative(model_output, batch2) * self.__sigmoidDerivative(layer2)
                     back_layer1 = layer1[0][:]
-                    
-                    """
-                    for i, neur1 in enumerate(layer1):
-                        #print(layer1[i].shape)
-                        #print(self.W2.shape)
-                        #print(derivative.shape)
-                        #w2_new[i] = self.W2[i] - derivative[i] * neur1 * self.lr
-                        #back_layer1[i] = np.sum(derivative, self.W2[i])
-                        for j, weight in enumerate(self.W2):
-                            w2_new[j] = weight - derivative[i] * layer1[i][j] * self.lr
-                            back_layer1[j] = np.sum(derivative[i] * weight)
-                    """
+                
 
-                    #term = np.dot(derivative.T, layer1) * self.lr
-                    term = np.dot(layer1.T, derivative) * self.lr
-                    w2_new = np.subtract(self.W2, term)
+                    term = np.dot(derivative.T, layer1) * self.lr
                     
-                    """
-                    for i, inputs in enumerate(batch):
-                        for j, weight in enumerate(self.W1):
-
-                            w1_new[j] = weight - (back_layer1 * batch[i][j] * self.lr)
-                    """
+                    w2_new = np.add(self.W2.T, term)
+                    w2_new = w2_new.T
+                    
 
                     back_layer1 = np.dot(self.W2, derivative.T)
+                    
+                    back_layer1 = (back_layer1.T * self.__sigmoidDerivative(layer1)).T
                     term2 = np.dot(back_layer1, batch) * self.lr
-                    w1_new = self.W1 - term2.T
+                    
+                    w1_new = np.add(self.W1.T, term2)
+                    w1_new = w1_new.T
 
 
                     self.W1 = w1_new[:]
                     self.W2 = w2_new[:]
+            else :
+                w2_new = self.W2[:]
+                w1_new = self.W1[:]
+                model_output = self.predict(xVals)
+                layer1, layer2 = self.__forward(xVals)
+                loss = self.mse_loss(layer2, yVals)
+                derivative = self.loss_derivative(model_output, yVals) * self.__sigmoidDerivative(layer2)
+                back_layer1 = layer1[0][:]
+
+                
+                term = np.dot(derivative.T, layer1) * self.lr
+                w2_new = np.add(self.W2.T, term)
+                w2_new = w2_new.T
+                
+    
+
+                back_layer1 = np.dot(self.W2, derivative.T)
+                back_layer1 = (back_layer1.T * self.__sigmoidDerivative(layer1)).T
+                term2 = np.dot(back_layer1, xVals) * self.lr
+                w1_new = np.add(self.W1.T, term2)
+                w1_new = w1_new.T
+
+                #print("w2_new shape : " + str(w2_new.shape))
+                #print("w1_new shape : " + str(w1_new.shape))
+
+                self.W1 = w1_new[:]
+                self.W2 = w2_new[:]
 
             
             
@@ -143,9 +150,7 @@ class NeuralNetwork_2Layer():
     # Forward pass.
     def __forward(self, input):
         layer1 = self.__sigmoid(np.dot(input, self.W1))
-        #print("after layer 1")
         layer2 = self.__sigmoid(np.dot(layer1, self.W2))
-        #print("after layer 2")
         return layer1, layer2
 
     # Predict.
@@ -162,7 +167,10 @@ class NeuralNetwork_2Layer():
         return loss
     
     def loss_derivative(self, preds, labels):
-        return (2/len(preds)) * (np.subtract(labels, preds))
+        try:
+            return (2/len(preds)) * (np.subtract(labels, preds))
+        except:
+            return (2) * (np.subtract(labels, preds))
 
 
 # Classifier that just guesses the class label.
@@ -174,6 +182,24 @@ def guesserClassifier(xTest):
         ans.append(pred)
     return np.array(ans)
 
+
+#==<TF_NET code>==#
+
+def buildANN():
+    model = keras.Sequential([keras.layers.Flatten(), keras.layers.Dense(512, activation=tf.nn.tanh),
+     tf.keras.layers.Dense(10, activation=tf.nn.softmax)])
+    #model = keras.Sequential([keras.layers.Dense(512, activation=tf.nn.relu),
+     #tf.keras.layers.Dense(10, activation=tf.nn.softmax)])
+    opt = keras.optimizers.Adam(learning_rate=0.001)
+    model.compile(optimizer="adam", loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+def trainANN(model, x, y, eps = 5):
+    model.fit(x, y, epochs = eps, validation_split=0.2)
+
+def runANN(model, x):
+    preds = model.predict(x)
+    return one_hot_encode(preds)
 
 
 #=========================<Pipeline Functions>==================================
@@ -215,13 +241,15 @@ def trainModel(data):
     elif ALGORITHM == "custom_net":
         print("Building and training Custom_NN.")
         print("Not yet implemented.")                   #TODO: Write code to build and train your custon neural net.
-        network = NeuralNetwork_2Layer(784, 10, 512, 0.001)
+        network = NeuralNetwork_2Layer(784, 10, 512, 0.01)
         network.train(xTrain,  yTrain)
         return network
     elif ALGORITHM == "tf_net":
         print("Building and training TF_NN.")
         print("Not yet implemented.")                   #TODO: Write code to build and train your keras neural net.
-        return None
+        network = buildANN()
+        trainANN(network, xTrain, yTrain)
+        return network
     else:
         raise ValueError("Algorithm not recognized.")
 
@@ -234,12 +262,12 @@ def runModel(data, model):
         print("Testing Custom_NN.")
         print("Not yet implemented.")                   #TODO: Write code to run your custon neural net.
         result = model.predict(data)
-        print(result[0])
         return result
     elif ALGORITHM == "tf_net":
         print("Testing TF_NN.")
         print("Not yet implemented.")                   #TODO: Write code to run your keras neural net.
-        return None
+        result = runANN(model, data)
+        return result
     else:
         raise ValueError("Algorithm not recognized.")
 
@@ -249,18 +277,38 @@ def evalResults(data, preds):   #TODO: Add F1 score confusion matrix here.
     xTest, yTest = data
     acc = 0
     for i in range(preds.shape[0]):
-        #My code 
-        print("ytest : " + str(yTest[i]))
-        print("preds : " + str(preds[i]))
-        #End of my code
         if np.array_equal(preds[i], yTest[i]):   acc = acc + 1
     accuracy = acc / preds.shape[0]
     print("Classifier algorithm: %s" % ALGORITHM)
     print("Classifier accuracy: %f%%" % (accuracy * 100))
+    print_confusion_matrix(preds, yTest)
     print()
 
 
+def one_hot_encode(preds):
+    index = np.argmax(preds, 1)
+    preds_res = preds[:]
+    for i, pred_res in enumerate(preds_res):
+        for j, pred in enumerate(pred_res):
+            if j == index[i]:
+                preds_res[i][j] = 1.0
+            else:
+                preds_res[i][j] = 0.0
 
+    return preds_res
+
+
+def print_confusion_matrix(preds, actual):
+    result = confusion_matrix(actual.argmax(axis=1), preds.argmax(axis=1))
+    print(result)
+    names = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    ax= plt.subplot()
+    sns.heatmap(result, annot=True, ax = ax);
+    ax.xaxis.set_ticklabels(names)
+    ax.yaxis.set_ticklabels(names)
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.show()
 
 
 #=========================<Main>================================================
@@ -270,7 +318,7 @@ def main():
     data = preprocessData(raw)
     model = trainModel(data[0])
     preds = runModel(data[1][0], model)
-    evalResults(data[1], preds)
+    evalResults(data[1], one_hot_encode(preds))
 
 
 
