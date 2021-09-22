@@ -77,7 +77,7 @@ class NeuralNetwork_2Layer():
             yield l[i : i + n], o[i : i + n]
 
     # Training with backpropagation.
-    def train(self, xVals, yVals, epochs = 30, minibatches = False, mbs = 100):
+    def train(self, xVals, yVals, epochs = 30, minibatches = True, mbs = 100):
         #TODO: Implement backprop. allow minibatches. mbs should specify the size of each minibatch.
 
         for epoch in range(epochs):
@@ -91,24 +91,47 @@ class NeuralNetwork_2Layer():
                 w2_new = self.W2[:]
                 w1_new = self.W1[:]
                 for batch, batch2 in (self.__doubleBatchGenerator(xVals, mbs, yVals)):
-                    model_output = self.predict(batch)
+                    #model_output = self.predict(batch)
                     layer1, layer2 = self.__forward(batch)
-                    loss = self.mse_loss(model_output, batch2)
-                    derivative = self.loss_derivative(model_output, batch2) * self.__sigmoidDerivative(layer2)
+                    loss = self.mse_loss(layer2, batch2)
+
+                    #The partial derivative of the error with respect to each of the weights leading into the output layer
+                    #includes the partial derivative of the loss function wrt to each of the output neurons, multiplied by the
+                    #partial derivative of the sigmoid function with respect to the net input, multiplied by the partial derivative of the
+                    #net input w.r.t each of the weights heading into the output layer. The next variable contains the numpy array containing
+                    #the activation function derivatives for all 10 output neurons for each of the 100 points in the batch. 
+                    derivative = self.loss_derivative(layer2, batch2) * self.__sigmoidDerivative(layer2)
+
+                    #print("derivative shape : " + str(derivative.shape))
+                    #This 2d array stores the weight coefficients of weights from hidden to output layer
                     back_layer1 = layer1[0][:]
                 
-
+                    #This computes a matrix of the partial derivatives of the error with respect to each
+                    #of the hidden layer weights. Taking the dot product accumulates the derivatives for all
+                    #points in the batch. We then multiply that by the learning rate which gives us our 
+                    #gradients for each of the weights.
                     term = np.dot(derivative.T, layer1) * self.lr
+                    #print("term shape : " + str(term.shape))
                     
+                    #We then update the weight vector
                     w2_new = np.add(self.W2.T, term)
                     w2_new = w2_new.T
                     
 
+                    #The partial derivative of the net input to the output neurons with respect
+                    #to the outputs from the hidden layers are the initial values of self.W2.
+                    #For each hidden layer neuron, we need to total up the partial derivatives for each output neuron.
                     back_layer1 = np.dot(self.W2, derivative.T)
                     
+                    #We then multiply this by the output function derivative with respect to each of the weights
+                    #and add it up for all of the points. 
                     back_layer1 = (back_layer1.T * self.__sigmoidDerivative(layer1)).T
+                    #print("layer 1 sigmoid derivative shape : " + str(self.__sigmoidDerivative(layer1).shape))
+                    #We then multiply all this derivatives by the learning rate
                     term2 = np.dot(back_layer1, batch) * self.lr
+                    #print("term2 shape : " + str(term2.shape))
                     
+                    #We update the weight vector for self.W1
                     w1_new = np.add(self.W1.T, term2)
                     w1_new = w1_new.T
 
@@ -118,10 +141,10 @@ class NeuralNetwork_2Layer():
             else :
                 w2_new = self.W2[:]
                 w1_new = self.W1[:]
-                model_output = self.predict(xVals)
+                #model_output = self.predict(xVals)
                 layer1, layer2 = self.__forward(xVals)
                 loss = self.mse_loss(layer2, yVals)
-                derivative = self.loss_derivative(model_output, yVals) * self.__sigmoidDerivative(layer2)
+                derivative = self.loss_derivative(layer2, yVals) * self.__sigmoidDerivative(layer2)
                 back_layer1 = layer1[0][:]
 
                 
@@ -156,14 +179,14 @@ class NeuralNetwork_2Layer():
     # Predict.
     def predict(self, xVals):
         _, layer2 = self.__forward(xVals)
-        return layer2
+        return one_hot_encode(layer2)
     
     #Custom function
     def mse_loss(self, preds, labels):
         vector = np.subtract(preds, labels)
         vector = np.square(vector)
-        squared_sum = np.sum(vector)
-        loss = squared_sum / len(labels)
+        #squared_sum = np.sum(vector)
+        loss = np.divide(vector, len(labels))
         return loss
     
     def loss_derivative(self, preds, labels):
@@ -186,7 +209,7 @@ def guesserClassifier(xTest):
 #==<TF_NET code>==#
 
 def buildANN():
-    model = keras.Sequential([keras.layers.Flatten(), keras.layers.Dense(512, activation=tf.nn.tanh),
+    model = keras.Sequential([keras.layers.Flatten(), keras.layers.Dense(512, activation=tf.nn.relu),
      tf.keras.layers.Dense(10, activation=tf.nn.softmax)])
     #model = keras.Sequential([keras.layers.Dense(512, activation=tf.nn.relu),
      #tf.keras.layers.Dense(10, activation=tf.nn.softmax)])
@@ -195,7 +218,7 @@ def buildANN():
     return model
 
 def trainANN(model, x, y, eps = 5):
-    model.fit(x, y, epochs = eps, validation_split=0.2)
+    model.fit(x, y, epochs = eps)
 
 def runANN(model, x):
     preds = model.predict(x)
@@ -300,7 +323,29 @@ def one_hot_encode(preds):
 
 def print_confusion_matrix(preds, actual):
     result = confusion_matrix(actual.argmax(axis=1), preds.argmax(axis=1))
+    for i, row in enumerate(result):
+        false_pos = 0
+        false_neg = 0
+        
+        true_pos = result[i][i]
+
+        for j in range(0, 10):
+            if i == j:
+                continue
+            false_neg = false_neg + result[i][j]
+            false_pos = false_pos + result[j][i]
+
+        precision = true_pos / (false_pos + true_pos)
+        recall = true_pos / (false_neg + true_pos)
+
+        #print("false_pos : " + str(false_pos))
+        #print("false_neg : " + str(false_neg))
+
+        f1_score = (2 * precision * recall) / (precision + recall)
+        print(" class", i, "f1 score : ", str(f1_score))
+
     print(result)
+    """
     names = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
     ax= plt.subplot()
     sns.heatmap(result, annot=True, ax = ax);
@@ -309,7 +354,7 @@ def print_confusion_matrix(preds, actual):
     plt.xlabel("Predicted")
     plt.ylabel("True")
     plt.show()
-
+    """
 
 #=========================<Main>================================================
 
@@ -318,7 +363,7 @@ def main():
     data = preprocessData(raw)
     model = trainModel(data[0])
     preds = runModel(data[1][0], model)
-    evalResults(data[1], one_hot_encode(preds))
+    evalResults(data[1], preds)
 
 
 
