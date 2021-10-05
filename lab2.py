@@ -26,11 +26,11 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 #ALGORITHM = "tf_net"
 ALGORITHM = "tf_conv"
 
-DATASET = "mnist_d"
+#DATASET = "mnist_d"
 #DATASET = "mnist_f"
 #DATASET = "cifar_10"
 #DATASET = "cifar_100_f"
-#DATASET = "cifar_100_c"
+DATASET = "cifar_100_c"
 
 if DATASET == "mnist_d":
     NUM_CLASSES = 10
@@ -45,12 +45,27 @@ elif DATASET == "mnist_f":
     IZ = 1
     IS = 784
 elif DATASET == "cifar_10":
-    pass                                 # TODO: Add this case.
+    #pass                                 # TODO: Add this case.
+    NUM_CLASSES = 10
+    IH = 32
+    IW = 32
+    IZ = 3
+    IS = 3072
 
 elif DATASET == "cifar_100_f":
-    pass                                 # TODO: Add this case.
+    #pass                                 # TODO: Add this case.
+    NUM_CLASSES = 100
+    IH = 32
+    IW = 32
+    IZ = 3
+    IS = 3072
 elif DATASET == "cifar_100_c":
-    pass                                 # TODO: Add this case.
+    #pass                                 # TODO: Add this case.
+    NUM_CLASSES = 100
+    IH = 32
+    IW = 32
+    IZ = 3
+    IS = 3072
 
 
 #=========================<Classifier Functions>================================
@@ -69,8 +84,10 @@ def buildTFNeuralNet(x, y, eps = 6):
     return None
 
 
-def buildTFConvNet(x, y, eps = 10, dropout = True, dropRate = 0.2):
+def buildTFConvNet(x, y, eps = 15, dropout = True, dropRate = 0.25):
     #TODO: Implement a CNN here. dropout option is required.
+
+    #VGG example
 
     lossType = keras.losses.categorical_crossentropy
     opt = keras.optimizers.Adam(learning_rate=0.001)
@@ -79,12 +96,17 @@ def buildTFConvNet(x, y, eps = 10, dropout = True, dropRate = 0.2):
             keras.Input(shape=(IW, IH, IZ)),
             layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
             layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
+            layers.BatchNormalization(),
+            layers.Activation("relu"),
             layers.MaxPooling2D(pool_size=(2, 2)),
-            layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
-            layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
-            layers.MaxPooling2D(pool_size=(2, 2)),
-            layers.Flatten(),
             layers.Dropout(dropRate),
+            layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
+            layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
+            layers.BatchNormalization(),
+            layers.Activation("relu"),
+            layers.MaxPooling2D(pool_size=(2, 2)),
+            layers.Dropout(dropRate),
+            layers.Flatten(),
             layers.Dense(NUM_CLASSES, activation="softmax"),
         ]
     )
@@ -105,17 +127,17 @@ def getRawData():
         mnist = tf.keras.datasets.fashion_mnist
         (xTrain, yTrain), (xTest, yTest) = mnist.load_data()
     elif DATASET == "cifar_10":
-        pass      # TODO: Add this case.
+        # TODO: Add this case.
         (xTrain, yTrain), (xTest, yTest) = tf.keras.datasets.cifar10.load_data()
     elif DATASET == "cifar_100_f":
-        pass      # TODO: Add this case.
+        # TODO: Add this case.
         (xTrain, yTrain), (xTest, yTest) = (x_train, y_train), (x_test, y_test) = keras.datasets.cifar100.load_data(
             label_mode='fine'
         )
     elif DATASET == "cifar_100_c":
-        pass      # TODO: Add this case.
+        # TODO: Add this case.
         (xTrain, yTrain), (xTest, yTest) = (x_train, y_train), (x_test, y_test) = keras.datasets.cifar100.load_data(
-            label_mode='course'
+            label_mode='coarse'
         )
     else:
         raise ValueError("Dataset not recognized.")
