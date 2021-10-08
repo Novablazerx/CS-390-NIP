@@ -28,9 +28,9 @@ ALGORITHM = "tf_conv"
 
 #DATASET = "mnist_d"
 #DATASET = "mnist_f"
-#DATASET = "cifar_10"
+DATASET = "cifar_10"
 #DATASET = "cifar_100_f"
-DATASET = "cifar_100_c"
+#DATASET = "cifar_100_c"
 
 if DATASET == "mnist_d":
     NUM_CLASSES = 10
@@ -79,14 +79,21 @@ def guesserClassifier(xTest):
     return np.array(ans)
 
 
-def buildTFNeuralNet(x, y, eps = 6):
-    pass        #TODO: Implement a standard ANN here.
-    return None
+def buildTFNeuralNet(x, y, eps = 5):
+    #TODO: Implement a standard ANN here.
+    model = keras.Sequential([keras.layers.Flatten(), keras.layers.Dense(512, activation=tf.nn.relu),
+     tf.keras.layers.Dense(NUM_CLASSES, activation=tf.nn.softmax)])
+    #model = keras.Sequential([keras.layers.Dense(512, activation=tf.nn.relu),
+     #tf.keras.layers.Dense(10, activation=tf.nn.softmax)])
+    opt = keras.optimizers.Adam(learning_rate=0.001)
+    model.compile(optimizer="adam", loss='categorical_crossentropy', metrics=['accuracy'])
+    model.fit(x, y, epochs = eps)
+    return model
 
 
 def buildTFConvNet(x, y, eps = 15, dropout = True, dropRate = 0.25):
     #TODO: Implement a CNN here. dropout option is required.
-
+    
     #VGG example
 
     lossType = keras.losses.categorical_crossentropy
@@ -217,17 +224,36 @@ def evalResults(data, preds):
     print("Classifier accuracy: %f%%" % (accuracy * 100))
     print()
 
+#code to plot bar graph
 
+import matplotlib.pyplot as plt
+
+def plot_bar_graph(data, vals, filename):
+    fig = plt.figure(figsize=(10, 5))
+    datasets = data[:]
+    values = vals[:]
+    plt.bar(datasets, values, width=0.5)
+    for i in range(len(datasets)):
+        plt.text(i,values[i],values[i])
+        
+    plt.savefig(filename)
+    plt.clf()
 
 #=========================<Main>================================================
 
 def main():
+    """
     raw = getRawData()
     data = preprocessData(raw)
     model = trainModel(data[0])
     preds = runModel(data[1][0], model)
     evalResults(data[1], preds)
-
+    """
+    datasets = ["mnist_d", "mnist_f", "cifar_10", "cifar_100_f", "cifar_100_c"]
+    ann_accs = [94.47, 81.93, 10.01, 5.02, 1]
+    cnn_accs = [99.3, 92.3, 76.66, 45.6, 55]
+    plot_bar_graph(datasets, ann_accs, "ANN_Accuracy_Plot.pdf")
+    plot_bar_graph(datasets, cnn_accs, "CNN_Accuracy_Plot.pdf")
 
 
 if __name__ == '__main__':
