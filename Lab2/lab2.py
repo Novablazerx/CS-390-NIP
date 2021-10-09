@@ -28,10 +28,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 ALGORITHM = "tf_conv"
 
 #DATASET = "mnist_d"
-DATASET = "mnist_f"
+#DATASET = "mnist_f"
 #DATASET = "cifar_10"
 #DATASET = "cifar_100_f"
-#DATASET = "cifar_100_c"
+DATASET = "cifar_100_c"
 
 if DATASET == "mnist_d":
     NUM_CLASSES = 10
@@ -103,16 +103,20 @@ def buildTFConvNet(x, y, eps = 15, dropout = True, dropRate = 0.25):
         model = keras.Sequential(
             [
                 keras.Input(shape=(IW, IH, IZ)),
+                #Two convolutional layers
                 layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
                 layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
+                #Batch normalization makes images more similar
                 layers.BatchNormalization(),
-                layers.Activation("relu"),
+                #Max pool to reduce dimensionality
                 layers.MaxPooling2D(pool_size=(2, 2)),
+                #Dropout to avoid overfitting
                 layers.Dropout(dropRate),
+                #Duplicate first block except make convolutional net
+                #more complex
                 layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
                 layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
                 layers.BatchNormalization(),
-                layers.Activation("relu"),
                 layers.MaxPooling2D(pool_size=(2, 2)),
                 layers.Dropout(dropRate),
                 layers.Flatten(),
@@ -126,12 +130,10 @@ def buildTFConvNet(x, y, eps = 15, dropout = True, dropRate = 0.25):
                 layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
                 layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
                 layers.BatchNormalization(),
-                layers.Activation("relu"),
                 layers.MaxPooling2D(pool_size=(2, 2)),
                 layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
                 layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
                 layers.BatchNormalization(),
-                layers.Activation("relu"),
                 layers.MaxPooling2D(pool_size=(2, 2)),
                 layers.Flatten(),
                 layers.Dense(NUM_CLASSES, activation="softmax"),
@@ -301,6 +303,7 @@ def print_confusion_matrix(preds, actual, last):
 
 def main():
     
+    
     raw = getRawData()
     data = preprocessData(raw)
     model = trainModel(data[0])
@@ -310,7 +313,7 @@ def main():
     """
     datasets = ["mnist_d", "mnist_f", "cifar_10", "cifar_100_f", "cifar_100_c"]
     ann_accs = [94.47, 81.93, 10.01, 5.02, 1]
-    cnn_accs = [99.3, 92.3, 76.66, 45.6, 55]
+    cnn_accs = [99.38, 92.25, 77.99, 46.5, 57.69]
     plot_bar_graph(datasets, ann_accs, "ANN_Accuracy_Plot.pdf")
     plot_bar_graph(datasets, cnn_accs, "CNN_Accuracy_Plot.pdf")
     """
