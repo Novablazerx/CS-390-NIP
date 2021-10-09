@@ -4,6 +4,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras import layers
+from sklearn.metrics import confusion_matrix
 import random
 
 from tensorflow.keras.applications.vgg16 import VGG16
@@ -27,9 +28,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 ALGORITHM = "tf_conv"
 
 #DATASET = "mnist_d"
-#DATASET = "mnist_f"
+DATASET = "mnist_f"
 #DATASET = "cifar_10"
-DATASET = "cifar_100_f"
+#DATASET = "cifar_100_f"
 #DATASET = "cifar_100_c"
 
 if DATASET == "mnist_d":
@@ -242,6 +243,7 @@ def evalResults(data, preds):
     accuracy = acc / preds.shape[0]
     print("Classifier algorithm: %s" % ALGORITHM)
     print("Classifier accuracy: %f%%" % (accuracy * 100))
+    print_confusion_matrix(preds, yTest, 10)
     print()
 
 #code to plot bar graph
@@ -259,22 +261,59 @@ def plot_bar_graph(data, vals, filename):
     plt.savefig(filename)
     plt.clf()
 
+#code to plot confusion matrix
+def print_confusion_matrix(preds, actual, last):
+    result = confusion_matrix(actual.argmax(axis=1), preds.argmax(axis=1))
+    for i, row in enumerate(result):
+        false_pos = 0
+        false_neg = 0
+        
+        true_pos = result[i][i]
+
+        for j in range(0, last):
+            if i == j:
+                continue
+            false_neg = false_neg + result[i][j]
+            false_pos = false_pos + result[j][i]
+
+        precision = true_pos / (false_pos + true_pos)
+        recall = true_pos / (false_neg + true_pos)
+
+        #print("false_pos : " + str(false_pos))
+        #print("false_neg : " + str(false_neg))
+
+        f1_score = (2 * precision * recall) / (precision + recall)
+        print(" class", i, "f1 score : ", str(f1_score))
+
+    print(result)
+    """
+    names = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    ax= plt.subplot()
+    sns.heatmap(result, annot=True, ax = ax);
+    ax.xaxis.set_ticklabels(names)
+    ax.yaxis.set_ticklabels(names)
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.show()
+    """
+
 #=========================<Main>================================================
 
 def main():
-    """
+    
     raw = getRawData()
     data = preprocessData(raw)
     model = trainModel(data[0])
     preds = runModel(data[1][0], model)
     evalResults(data[1], preds)
+    
     """
     datasets = ["mnist_d", "mnist_f", "cifar_10", "cifar_100_f", "cifar_100_c"]
     ann_accs = [94.47, 81.93, 10.01, 5.02, 1]
     cnn_accs = [99.3, 92.3, 76.66, 45.6, 55]
     plot_bar_graph(datasets, ann_accs, "ANN_Accuracy_Plot.pdf")
     plot_bar_graph(datasets, cnn_accs, "CNN_Accuracy_Plot.pdf")
-
+    """
 
 if __name__ == '__main__':
     main()
